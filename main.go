@@ -6,11 +6,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/technofy/cloudwatch_exporter/config"
 	"os"
 	"sync"
+
+	"github.com/fanatic/cloudwatch_exporter/config"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -33,6 +34,7 @@ func loadConfigFile() error {
 	// Initial loading of the configuration file
 	tmpSettings, err = config.Load(*configFile)
 	if err != nil {
+		configMutex.Unlock()
 		return err
 	}
 
@@ -79,6 +81,7 @@ func handleTarget(w http.ResponseWriter, req *http.Request) {
 		configMutex.Unlock()
 		return
 	}
+	configMutex.Unlock()
 
 	registry.MustRegister(collector)
 	handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
@@ -87,7 +90,6 @@ func handleTarget(w http.ResponseWriter, req *http.Request) {
 
 	// Serve the answer through the Collect method of the Collector
 	handler.ServeHTTP(w, req)
-	configMutex.Unlock()
 }
 
 func main() {
